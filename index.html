@@ -60,7 +60,7 @@
     .nav a:hover{background:rgba(255,255,255,0.06)}
 
     /* Container */
-    .container{padding:22px;max-width:1200px;margin:0 auto}
+    .container{padding:22px;max-width:1200px;margin:0 auto; padding-bottom:120px /* space for floating CTA */ }
 
     /* Search + filters */
     .topbar{display:flex;gap:12px;align-items:center;margin-bottom:18px;flex-wrap:wrap}
@@ -120,6 +120,30 @@
     /* toast */
     .toast{position:fixed;right:20px;bottom:20px;background:rgba(2,6,23,0.9);color:white;padding:12px 14px;border-radius:12px;display:none;opacity:0;transform:translateY(8px);transition:opacity .2s, transform .2s}
 
+    /* Floating CTA (ensures visible on mobile) */
+    .fab {
+      position: fixed;
+      right: 16px;
+      bottom: 16px;
+      z-index: 99999; /* very high so it sits above product cards */
+      background: linear-gradient(90deg,var(--green),#22c55e);
+      color: white;
+      padding: 14px 18px;
+      border-radius: 999px;
+      font-weight:700;
+      box-shadow: 0 18px 48px rgba(16,24,40,0.18);
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+    .fab .emoji { font-size:18px; line-height:1 }
+
+    /* make sure product grid isn't hidden behind CTA */
+    .products { padding-bottom: 24px }
+
     /* responsive */
     @media(max-width:900px){ .products{grid-template-columns:repeat(auto-fill,minmax(180px,1fr))} }
     @media(max-width:680px){
@@ -127,6 +151,8 @@
       .topbar{flex-direction:column;align-items:stretch}
       .search{width:100%}
       .grid-two{grid-template-columns:1fr}
+      /* ensure container bottom padding is more on small screens */
+      .container{padding-bottom:140px}
     }
   </style>
 </head>
@@ -140,19 +166,26 @@
       </div>
     </div>
 
-    <nav class="nav">
+    <nav class="nav" aria-label="Main navigation">
       <a href="#/">Home</a>
       <a href="#/contact">Contact</a>
       <!-- Admin link intentionally omitted for security -->
+      <a href="#/" class="pill" style="background: rgba(255,255,255,0.12); padding:8px 10px; border-radius:10px; font-weight:700; color:#fff; text-decoration:none">Open App</a>
     </nav>
   </header>
 
-  <main class="container" id="app">
+  <main class="container" id="app" role="main" aria-live="polite">
     <!-- rendered by JS -->
   </main>
 
+  <!-- Floating CTA: visible and guaranteed above product cards on mobile -->
+  <button id="openAppBtn" class="fab" aria-label="Open the app">
+    <span class="emoji">🚀</span>
+    <span>Go to our app</span>
+  </button>
+
   <!-- Modal -->
-  <div class="modal-backdrop" id="modal">
+  <div class="modal-backdrop" id="modal" aria-hidden="true">
     <div class="modal-sheet" role="dialog" aria-modal="true">
       <div class="modal-head"><div id="modalTitle"></div><div><button id="modalClose" class="btn ghost">Close</button></div></div>
       <div class="modal-body" id="modalBody"></div>
@@ -160,7 +193,7 @@
     </div>
   </div>
 
-  <div class="toast" id="toast"></div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
 /* Modernized storefront (appearance-first) — fully compatible with admin.html localStorage keys
@@ -304,8 +337,9 @@ function openModal(title, html, footHtml){
   modalFoot.innerHTML = footHtml || '';
   modalBackdrop.style.display = 'flex';
   modalBackdrop.querySelector('.modal-sheet').scrollTop = 0;
+  modalBackdrop.setAttribute('aria-hidden','false');
 }
-function closeModal(){ modalBackdrop.style.display = 'none'; }
+function closeModal(){ modalBackdrop.style.display = 'none'; modalBackdrop.setAttribute('aria-hidden','true'); }
 
 /* ====== Order flow (in-app) ====== */
 function openOrder(productId){
@@ -523,6 +557,21 @@ setInterval(()=>{ const curr = JSON.stringify(getProducts()); if(curr !== lastPr
 
 /* ===== Hidden convenience: Ctrl+Shift+K opens admin.html (on your machine) ===== */
 document.addEventListener('keydown', (e)=>{ if(e.ctrlKey && e.shiftKey && e.key && e.key.toLowerCase() === 'k'){ window.location.href = 'admin.html'; } });
+
+/* ===== Floating CTA wiring ===== */
+document.getElementById('openAppBtn').addEventListener('click', ()=>{
+  // navigate to app home (router uses hash)
+  location.hash = '/';
+  // brief focus to the search input for immediate use on mobile
+  setTimeout(()=>{ const q = document.getElementById('q'); if(q) q.focus(); }, 250);
+});
+
+// Hide CTA when modal is open so it doesn't overlap dialog controls
+const observer = new MutationObserver(()=> {
+  const modalVisible = modalBackdrop.style.display === 'flex';
+  document.getElementById('openAppBtn').style.display = modalVisible ? 'none' : 'flex';
+});
+observer.observe(modalBackdrop, { attributes: true, attributeFilter: ['style'] });
 
 </script>
 </body>
